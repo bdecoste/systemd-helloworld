@@ -1,0 +1,29 @@
+# User-facing values for the HelloWorld Palette add-on pack.
+# Referenced from manifests/* via Go template syntax: {{ .Values.<path> }}.
+# Override any of these when adding the pack to a Cluster Profile.
+
+pack:
+  namespace: helloworld
+  # Optional airgap manifest — lists images Palette should mirror into the
+  # cluster's private registry when the cluster is airgapped.
+  content:
+    images:
+      - image: "helloworld:0.1.0"
+
+image:
+  # Replace with your ECR path once you push the image, e.g.
+  #   <account>.dkr.ecr.<region>.amazonaws.com/helloworld
+  repository: helloworld
+  tag: "0.1.0"
+
+replicas: 2
+
+# Populated into the ConfigMap and consumed by the app via env vars.
+# Same shape as /etc/helloworld/helloworld.env on the EC2 side.
+config:
+  port: "8080"
+  greeting: "Hello from EKS (container)"
+  environment: "eks-pod"
+
+ingress:
+  className: nginx

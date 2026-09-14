@@ -26,6 +26,10 @@ k8s/                       # Future-state wrapper (EKS).
   service.yaml             # cluster-internal endpoint
   ingress.yaml             # optional NGINX ingress exposure
   ingress-nginx-values.yaml # Helm values: attach the EIP to the ingress NLB
+palette-pack/              # Spectro Cloud Palette add-on pack.
+  helloworld/0.1.0/        # ConfigMap+Deployment+Service+Ingress, templated
+docs/
+  palette-pack.md          # build/publish/attach the pack to a Palette EKS cluster
 ```
 
 ## Why the app is portable without changes
@@ -222,6 +226,16 @@ External exposure options on EKS:
 - **Service type LoadBalancer**: swap `type: ClusterIP` for
   `type: LoadBalancer` in `service.yaml` — provisions an NLB directly, no
   ingress controller needed.
+
+### Deploying via Spectro Cloud Palette
+
+The same four manifests are packaged as a Palette add-on pack at
+`palette-pack/helloworld/0.1.0/` — image / replicas / config / ingress class
+are exposed as pack values, so per-cluster customization happens on the
+Cluster Profile layer instead of by editing YAML. Full build/publish/attach
+walkthrough (git-based and OCI-based registry paths, add-on profile
+attachment to an existing Palette-managed EKS cluster) is in
+[`docs/palette-pack.md`](docs/palette-pack.md).
 
 ### Reusing the existing Elastic IP in front of ingress-nginx
 
