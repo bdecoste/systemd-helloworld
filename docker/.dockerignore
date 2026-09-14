@@ -1,0 +1,7 @@
+systemd/
+k8s/
+docker/
+README.md
+*.md
+.git
+.gitignore

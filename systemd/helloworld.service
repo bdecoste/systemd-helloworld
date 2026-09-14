@@ -1,0 +1,27 @@
+[Unit]
+Description=HelloWorld HTTP service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=helloworld
+Group=helloworld
+WorkingDirectory=/opt/helloworld
+EnvironmentFile=/etc/helloworld/helloworld.env
+ExecStart=/usr/bin/python3 /opt/helloworld/helloworld.py
+Restart=on-failure
+RestartSec=2s
+
+# stdout/stderr -> journald; view with: journalctl -u helloworld -f
+StandardOutput=journal
+StandardError=journal
+
+# Minimal hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

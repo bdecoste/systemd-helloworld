@@ -1,0 +1,10 @@
+# Same shape as /etc/helloworld/helloworld.env on the VM.
+# The systemd EnvironmentFile becomes a ConfigMap in K8s.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helloworld-config
+data:
+  PORT: "8080"
+  GREETING: "Hello from EKS (container)"
+  ENVIRONMENT: "eks-pod"
