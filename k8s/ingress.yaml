@@ -1,17 +1,16 @@
-# EKS-specific external exposure via AWS Load Balancer Controller (ALB).
-# Requires the AWS Load Balancer Controller installed in the cluster.
-# Omit this file if you're using type: LoadBalancer on the Service instead.
+# External exposure via the NGINX Ingress Controller (ingress-nginx).
+# Requires the controller installed in the cluster and its "nginx" IngressClass:
+#   helm upgrade --install ingress-nginx ingress-nginx \
+#     --repo https://kubernetes.github.io/ingress-nginx \
+#     --namespace ingress-nginx --create-namespace
+# On EKS the controller's Service is typically type: LoadBalancer, which
+# provisions an NLB — that NLB is the public entry point for this Ingress.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: helloworld
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/healthcheck-path: /healthz
 spec:
-  ingressClassName: alb
+  ingressClassName: nginx
   rules:
     - http:
         paths:

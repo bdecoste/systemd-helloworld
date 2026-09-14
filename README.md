@@ -24,7 +24,7 @@ k8s/                       # Future-state wrapper (EKS).
   configmap.yaml           # config (mirrors helloworld.env)
   deployment.yaml          # replaces the systemd unit
   service.yaml             # cluster-internal endpoint
-  ingress.yaml             # optional ALB exposure
+  ingress.yaml             # optional NGINX ingress exposure
 ```
 
 ## Why the app is portable without changes
@@ -196,7 +196,7 @@ Update `k8s/deployment.yaml`'s `image:` to `$REPO:0.1.0` and apply:
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/ingress.yaml     # optional; requires AWS LB Controller
+kubectl apply -f k8s/ingress.yaml     # optional; requires NGINX Ingress Controller
 ```
 
 Verify:
@@ -210,11 +210,17 @@ curl http://localhost:8080/
 
 External exposure options on EKS:
 
-- **Ingress + ALB** (recommended): install the [AWS Load Balancer
-  Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/),
-  then `k8s/ingress.yaml` provisions an ALB with `/healthz` as the health check.
+- **Ingress + NGINX** (this repo): install the [NGINX Ingress
+  Controller](https://kubernetes.github.io/ingress-nginx/) — its Service is
+  typically `type: LoadBalancer` on EKS, which provisions an NLB as the public
+  entry point. `k8s/ingress.yaml` routes traffic from that NLB to the
+  `helloworld` Service.
+- **Ingress + ALB**: alternative using the [AWS Load Balancer
+  Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
+  with `ingressClassName: alb` and `alb.ingress.kubernetes.io/*` annotations.
 - **Service type LoadBalancer**: swap `type: ClusterIP` for
-  `type: LoadBalancer` in `service.yaml` — provisions an NLB by default.
+  `type: LoadBalancer` in `service.yaml` — provisions an NLB directly, no
+  ingress controller needed.
 
 ## The mapping (cheat sheet)
 
@@ -230,7 +236,7 @@ External exposure options on EKS:
 | Health check              | ALB target group → HTTP `/healthz`| readiness/liveness probes → `/healthz`       |
 | Rollout                   | ASG instance refresh / AMI bake   | `kubectl rollout` (RollingUpdate strategy)   |
 | Horizontal scale          | ASG desired-count                 | Deployment `replicas` + HPA                  |
-| External LB               | ALB in front of ASG               | Ingress (ALB via AWS LB Controller) or NLB   |
+| External LB               | ALB in front of ASG               | Ingress (NGINX or ALB controller) → NLB/ALB  |
 | Rollback                  | Previous AMI / launch template    | `kubectl rollout undo`                       |
 
 ## What we deliberately did not change
