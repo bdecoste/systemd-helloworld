@@ -1,0 +1,14 @@
+{
+  "addonType": "app services",
+  "cloudTypes": ["aws"],
+  "displayName": "HelloWorld",
+  "kubeManifests": [
+    "manifests/configmap.yaml",
+    "manifests/deployment.yaml",
+    "manifests/service.yaml",
+    "manifests/ingress.yaml"
+  ],
+  "layer": "addon",
+  "name": "helloworld",
+  "version": "0.1.0"
+}
