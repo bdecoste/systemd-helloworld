@@ -25,6 +25,7 @@ k8s/                       # Future-state wrapper (EKS).
   deployment.yaml          # replaces the systemd unit
   service.yaml             # cluster-internal endpoint
   ingress.yaml             # optional NGINX ingress exposure
+  ingress-nginx-values.yaml # Helm values: attach the EIP to the ingress NLB
 ```
 
 ## Why the app is portable without changes
@@ -221,6 +222,71 @@ External exposure options on EKS:
 - **Service type LoadBalancer**: swap `type: ClusterIP` for
   `type: LoadBalancer` in `service.yaml` — provisions an NLB directly, no
   ingress controller needed.
+
+### Reusing the existing Elastic IP in front of ingress-nginx
+
+Goal: the client stays pointed at the same public IP it hit when the app
+lived on EC2. Only what's behind that IP moves (EC2 instance → NLB → NGINX →
+Pod).
+
+Only NLB supports Elastic IPs (ALB does not), so the recipe is: install
+ingress-nginx with its controller Service as `type: LoadBalancer`, and use
+AWS Load Balancer Controller annotations to attach the existing EIP to the
+NLB it provisions.
+
+**Prerequisites**
+
+1. [AWS Load Balancer
+   Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
+   is installed in the cluster. The in-tree cloud provider NLB does not
+   support EIPs — the `aws-load-balancer-type: external` annotation routes
+   NLB creation through this controller instead.
+2. You know the `AllocationId` (`eipalloc-…`) of the EIP currently on the
+   EC2 instance, and the public subnet in the same AZ.
+
+**1. Edit `k8s/ingress-nginx-values.yaml`** — replace `eipalloc-REPLACE_ME`
+and `subnet-REPLACE_ME` with real values.
+
+**2. Install ingress-nginx with those values**
+
+```bash
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx --create-namespace \
+  -f k8s/ingress-nginx-values.yaml
+```
+
+**3. Apply the app Ingress**
+
+```bash
+kubectl apply -f k8s/ingress.yaml
+```
+
+**4. Cutover** — with the app healthy in K8s but the EIP still on EC2, do
+one atomic swap:
+
+```bash
+# Disassociate from the EC2 instance
+aws ec2 disassociate-address --association-id eipassoc-xxxx
+```
+
+The AWS LB Controller reconciles the NLB and attaches the freed EIP. Client
+sees no address change; connections after the swap land on the NGINX
+controller pods and are routed to the `helloworld` Service.
+
+**Rollback** — reverse in one step:
+
+```bash
+aws ec2 associate-address --instance-id i-0123... --allocation-id eipalloc-xxxx
+```
+
+**Constraint to be aware of.** NLBs need one EIP per subnet they span. This
+config pins the NLB to one subnet (single-AZ) so a single-EIP setup carries
+over cleanly. For multi-AZ HA, allocate one EIP per AZ and list both in
+`aws-load-balancer-eip-allocations` / `aws-load-balancer-subnets` — but that
+means the client sees a *set* of IPs, so it needs to be resolving via DNS
+(usually Route 53), not pinned to a single IP literal. If the client is
+pinned, single-AZ is the ceiling until the client contract can change.
 
 ## The mapping (cheat sheet)
 

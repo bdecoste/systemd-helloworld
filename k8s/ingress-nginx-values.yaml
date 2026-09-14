@@ -1,0 +1,51 @@
+# Helm values for installing ingress-nginx on EKS with the existing
+# Elastic IP attached to the controller's NLB. Client keeps hitting the
+# same IP; only what's behind the IP changes (EC2 -> EKS).
+#
+# Install:
+#   helm upgrade --install ingress-nginx ingress-nginx \
+#     --repo https://kubernetes.github.io/ingress-nginx \
+#     --namespace ingress-nginx --create-namespace \
+#     -f k8s/ingress-nginx-values.yaml
+#
+# Prerequisite: the AWS Load Balancer Controller must be installed in the
+# cluster. The in-tree cloud provider NLB does NOT support Elastic IPs;
+# the `aws-load-balancer-type: external` annotation below routes NLB
+# creation through the AWS LB Controller, which does.
+#
+# Before installing:
+#   1. Replace eipalloc-REPLACE_ME with your existing Elastic IP's AllocationId.
+#   2. Replace subnet-REPLACE_ME with the public subnet in the same AZ as the EIP.
+#      Count and order of EIPs must match count and order of subnets.
+
+controller:
+  # Preserve the client source IP end-to-end (skip the kube-proxy SNAT hop).
+  # Requires the NLB to send traffic only to nodes with a Ready pod.
+  service:
+    externalTrafficPolicy: Local
+    type: LoadBalancer
+    annotations:
+      # Route NLB provisioning through the AWS Load Balancer Controller
+      # (required for EIP support).
+      service.beta.kubernetes.io/aws-load-balancer-type: "external"
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
+      # Attach the existing Elastic IP. One eipalloc-… per subnet.
+      service.beta.kubernetes.io/aws-load-balancer-eip-allocations: "eipalloc-REPLACE_ME"
+
+      # Pin the NLB to the subnet the EIP lives in. Single-AZ setup here
+      # mirrors the single-EIP EC2 topology. For multi-AZ HA, add one EIP
+      # per AZ and list all subnets in matching order, e.g.:
+      #   eip-allocations: "eipalloc-aaaa,eipalloc-bbbb"
+      #   subnets:         "subnet-aaaa,subnet-bbbb"
+      service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-REPLACE_ME"
+
+      # Cross-zone off keeps traffic in-AZ; turn on if you go multi-AZ and
+      # want the NLB to distribute across zones (small $ per GB).
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "false"
+
+      # NLB TCP health check on the ingress-nginx health port.
+      service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
+      service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/healthz"
+      service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "10254"
