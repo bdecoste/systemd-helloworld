@@ -1,0 +1,14 @@
+apiVersion: v2
+name: helloworld
+description: HelloWorld migration demo — same app running as an EC2 systemd service (current state) and as a K8s Deployment (future state).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.23.0-0"
+maintainers:
+  - name: Bill DeCoste
+    email: bill.decoste@spectrocloud.com
+keywords:
+  - helloworld
+  - demo
+  - migration

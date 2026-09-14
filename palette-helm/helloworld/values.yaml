@@ -1,0 +1,51 @@
+# Values for helloworld. Override in Palette's Cluster Profile values pane
+# or with -f/--set on the helm CLI.
+
+image:
+  # Replace with your ECR path once you push the image, e.g.
+  #   <account>.dkr.ecr.<region>.amazonaws.com/helloworld
+  repository: helloworld
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+# Populated into the ConfigMap and consumed by the app via env vars.
+# Same shape as /etc/helloworld/helloworld.env on the EC2 side.
+config:
+  port: "8080"
+  greeting: "Hello from EKS (helm chart)"
+  environment: "eks-pod"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /
+  pathType: Prefix
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+# Container-level security context — mirrors the systemd unit's hardening.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Pod-level security context.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  seccompProfile:
+    type: RuntimeDefault

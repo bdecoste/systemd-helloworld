@@ -28,8 +28,11 @@ k8s/                       # Future-state wrapper (EKS).
   ingress-nginx-values.yaml # Helm values: attach the EIP to the ingress NLB
 palette-pack/              # Spectro Cloud Palette add-on pack.
   helloworld/0.1.0/        # ConfigMap+Deployment+Service+Ingress, templated
+palette-helm/              # Same app packaged as a standard Helm chart.
+  helloworld/              # Chart.yaml, values.yaml, templates/
 docs/
   palette-pack.md          # build/publish/attach the pack to a Palette EKS cluster
+  palette-helm.md          # helm-chart alternative when Pack OCI sync isn't cooperating
 ```
 
 ## Why the app is portable without changes
