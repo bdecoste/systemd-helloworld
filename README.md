@@ -73,6 +73,103 @@ curl http://localhost:8080/healthz
 Typical AWS wiring: an ALB / target group in front of the instance
 ASG, health check on `/healthz`.
 
+### Exposing the EC2 service over a static AWS IP
+
+Three viable shapes. Pick by fleet size.
+
+#### Recommended for a single VM: Elastic IP on the instance
+
+An Elastic IP (EIP) is free while attached to a running instance. It stays with
+the instance across stop/start and reboots.
+
+```bash
+# 1. Allocate an EIP
+aws ec2 allocate-address \
+  --domain vpc \
+  --tag-specifications 'ResourceType=elastic-ip,Tags=[{Key=Name,Value=helloworld-eip}]'
+# note the returned AllocationId (eipalloc-…) and PublicIp
+
+# 2. Associate to the instance
+aws ec2 associate-address \
+  --instance-id i-0123456789abcdef0 \
+  --allocation-id eipalloc-0123456789abcdef0
+
+# 3. Open port 8080 in the instance's security group
+aws ec2 authorize-security-group-ingress \
+  --group-id sg-0123456789abcdef0 \
+  --protocol tcp --port 8080 --cidr 0.0.0.0/0   # narrow the CIDR if you can
+
+# 4. Verify
+curl http://<PublicIp>:8080/
+curl http://<PublicIp>:8080/healthz
+```
+
+#### If you want it on port 80 (no load balancer)
+
+The app runs as the non-root `helloworld` user and can't bind port 80 directly.
+Two options that don't touch the app:
+
+**A. Grant the process the bind capability** — add to `helloworld.service`
+under `[Service]`:
+
+```ini
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+```
+
+Set `PORT=80` in `/etc/helloworld/helloworld.env`, then:
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl restart helloworld
+```
+
+**B. Kernel-level port redirect** (leave the app on 8080):
+
+```bash
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+sudo iptables -t nat -A OUTPUT -o lo -p tcp --dport 80 -j REDIRECT --to-port 8080
+# Persist across reboots
+#   Amazon Linux: sudo dnf install -y iptables-services && sudo service iptables save
+#   Ubuntu:       sudo apt-get install -y iptables-persistent
+```
+
+Either way, open TCP 80 in the security group and hit `http://<PublicIp>/`.
+
+#### Multi-instance / HA: Network Load Balancer with Elastic IPs
+
+Once there is more than one instance (ASG, multi-AZ), the EIP-on-instance
+pattern doesn't stretch. An NLB gives you one fixed public IP per AZ and fronts
+the target group:
+
+```bash
+# One EIP per AZ subnet
+aws ec2 allocate-address --domain vpc     # repeat per AZ
+
+aws elbv2 create-load-balancer \
+  --name helloworld-nlb --type network --scheme internet-facing \
+  --subnet-mappings SubnetId=subnet-aaaa,AllocationId=eipalloc-aaaa \
+                    SubnetId=subnet-bbbb,AllocationId=eipalloc-bbbb
+
+aws elbv2 create-target-group \
+  --name helloworld-tg \
+  --protocol TCP --port 8080 --vpc-id vpc-xxxx \
+  --health-check-protocol HTTP --health-check-path /healthz --health-check-port 8080
+
+aws elbv2 register-targets --target-group-arn <tg-arn> \
+  --targets Id=i-0123... Id=i-4567...
+
+aws elbv2 create-listener --load-balancer-arn <lb-arn> \
+  --protocol TCP --port 80 --default-actions Type=forward,TargetGroupArn=<tg-arn>
+```
+
+Tighten the instance security group to allow TCP 8080 only from the VPC CIDR —
+the NLB is the only ingress path.
+
+#### Not a static IP, but usually what people actually want
+
+If the goal is a stable *URL*, put a Route 53 A record on top (pointing at the
+EIP, or ALIAS to the NLB/ALB). The IP becomes an implementation detail and you
+can re-wire the backend without breaking clients.
+
 ## Future state — EKS
 
 Build and push the image (no app changes):
