@@ -18,7 +18,7 @@ palette-pack/
         configmap.yaml    # PORT / GREETING / ENVIRONMENT
         deployment.yaml   # 2 replicas of the containerized app
         service.yaml      # ClusterIP :80 → pod :8080
-        ingress.yaml      # ingressClassName: nginx (overridable)
+        ingress.yaml      # ingressClassName: traefik (overridable)
 ```
 
 The manifests reference values via `{{ .Values.<path> }}`. Palette renders
@@ -180,8 +180,8 @@ resource "spectrocloud_cluster_eks" "example" {
 kubectl -n helloworld get deploy,po,svc,ingress
 kubectl -n helloworld logs -l app=helloworld -f
 
-# Hit the Ingress. If the NGINX controller has the EIP annotations wired up
-# per k8s/ingress-nginx-values.yaml, this is the same public IP the EC2
+# Hit the Ingress. If the Traefik controller has the EIP annotations wired up
+# per k8s/traefik-values.yaml, this is the same public IP the EC2
 # service used to serve on.
 curl -H "Host: $(kubectl -n helloworld get ingress helloworld -o jsonpath='{.spec.rules[0].host}')" \
      http://<EIP>/
@@ -208,6 +208,6 @@ Publishing a new version is additive — never overwrite an existing version:
   the cluster's private registry when the cluster is airgapped. Keep this
   in sync with `image.repository:image.tag`.
 - **Ordering.** Add-on packs in a profile apply in list order. This pack has
-  no dependencies beyond a running ingress controller (NGINX). If you bundle
+  no dependencies beyond a running ingress controller (Traefik). If you bundle
   the ingress controller as another add-on pack, put it before `helloworld`
   in the profile.

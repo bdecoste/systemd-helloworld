@@ -51,6 +51,6 @@ helm uninstall helloworld -n helloworld
 | `service.type`               | `ClusterIP`                        |
 | `service.port`               | `80`                               |
 | `ingress.enabled`            | `true`                             |
-| `ingress.className`          | `nginx`                            |
+| `ingress.className`          | `traefik`                          |
 
 Override in Palette's Cluster Profile values pane (or with `--set` locally).

@@ -26,4 +26,4 @@ config:
   environment: "eks-pod"
 
 ingress:
-  className: nginx
+  className: traefik

@@ -11,7 +11,7 @@ Kubernetes cluster.
 | ConfigMap   | `PORT`, `GREETING`, `ENVIRONMENT` for the app     |
 | Deployment  | 2 replicas of `helloworld` (non-root, hardened)   |
 | Service     | ClusterIP on port 80 → pod port 8080              |
-| Ingress     | `ingressClassName: nginx`, path `/`               |
+| Ingress     | `ingressClassName: traefik`, path `/`             |
 
 ## Values
 
@@ -26,11 +26,11 @@ All values are overridable at the Cluster Profile layer.
 | `config.port`            | `"8080"`                         |
 | `config.greeting`        | `"Hello from EKS (container)"`   |
 | `config.environment`     | `"eks-pod"`                      |
-| `ingress.className`      | `nginx`                          |
+| `ingress.className`      | `traefik`                        |
 
 ## Prerequisites in the cluster
 
-- NGINX Ingress Controller (see `k8s/ingress-nginx-values.yaml` at repo root)
+- Traefik Ingress Controller (see `k8s/traefik-values.yaml` at repo root)
 - Image at `image.repository:image.tag` reachable from the cluster
   (typically ECR — replace the default before deploying)
 

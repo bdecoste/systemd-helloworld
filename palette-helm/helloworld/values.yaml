@@ -23,7 +23,7 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   path: /
   pathType: Prefix
 

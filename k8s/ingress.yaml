@@ -1,8 +1,8 @@
-# External exposure via the NGINX Ingress Controller (ingress-nginx).
-# Requires the controller installed in the cluster and its "nginx" IngressClass:
-#   helm upgrade --install ingress-nginx ingress-nginx \
-#     --repo https://kubernetes.github.io/ingress-nginx \
-#     --namespace ingress-nginx --create-namespace
+# External exposure via the Traefik Ingress Controller.
+# Requires the controller installed in the cluster and its "traefik" IngressClass:
+#   helm upgrade --install traefik traefik \
+#     --repo https://traefik.github.io/charts \
+#     --namespace traefik --create-namespace
 # On EKS the controller's Service is typically type: LoadBalancer, which
 # provisions an NLB — that NLB is the public entry point for this Ingress.
 apiVersion: networking.k8s.io/v1
@@ -10,7 +10,7 @@ kind: Ingress
 metadata:
   name: helloworld
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - http:
         paths:

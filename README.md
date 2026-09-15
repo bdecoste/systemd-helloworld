@@ -24,8 +24,8 @@ k8s/                       # Future-state wrapper (EKS).
   configmap.yaml           # config (mirrors helloworld.env)
   deployment.yaml          # replaces the systemd unit
   service.yaml             # cluster-internal endpoint
-  ingress.yaml             # optional NGINX ingress exposure
-  ingress-nginx-values.yaml # Helm values: attach the EIP to the ingress NLB
+  ingress.yaml             # optional Traefik ingress exposure
+  traefik-values.yaml      # Helm values: attach the EIP to the Traefik NLB
 palette-helm/              # WORKING: same app packaged as a Helm chart.
   helloworld/              # Chart.yaml, values.yaml, templates/
                            #   Published to gh-pages branch as an index.yaml +
@@ -209,7 +209,7 @@ Update `k8s/deployment.yaml`'s `image:` to `$REPO:0.1.0` and apply:
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/ingress.yaml     # optional; requires NGINX Ingress Controller
+kubectl apply -f k8s/ingress.yaml     # optional; requires Traefik Ingress Controller
 ```
 
 Verify:
@@ -223,9 +223,9 @@ curl http://localhost:8080/
 
 External exposure options on EKS:
 
-- **Ingress + NGINX** (this repo): install the [NGINX Ingress
-  Controller](https://kubernetes.github.io/ingress-nginx/) — its Service is
-  typically `type: LoadBalancer` on EKS, which provisions an NLB as the public
+- **Ingress + Traefik** (this repo): install the [Traefik Ingress
+  Controller](https://doc.traefik.io/traefik/) — its Service is typically
+  `type: LoadBalancer` on EKS, which provisions an NLB as the public
   entry point. `k8s/ingress.yaml` routes traffic from that NLB to the
   `helloworld` Service.
 - **Ingress + ALB**: alternative using the [AWS Load Balancer
@@ -248,15 +248,15 @@ a Helm registry. Full package/publish/attach walkthrough (plus notes on the
 Pack OCI path that didn't work and why) is in
 [`docs/palette-helm.md`](docs/palette-helm.md).
 
-### Reusing the existing Elastic IP in front of ingress-nginx
+### Reusing the existing Elastic IP in front of Traefik
 
 Goal: the client stays pointed at the same public IP it hit when the app
-lived on EC2. Only what's behind that IP moves (EC2 instance → NLB → NGINX →
-Pod).
+lived on EC2. Only what's behind that IP moves (EC2 instance → NLB →
+Traefik → Pod).
 
 Only NLB supports Elastic IPs (ALB does not), so the recipe is: install
-ingress-nginx with its controller Service as `type: LoadBalancer`, and use
-AWS Load Balancer Controller annotations to attach the existing EIP to the
+Traefik with its controller Service as `type: LoadBalancer`, and use AWS
+Load Balancer Controller annotations to attach the existing EIP to the
 NLB it provisions.
 
 **Prerequisites**
@@ -269,16 +269,16 @@ NLB it provisions.
 2. You know the `AllocationId` (`eipalloc-…`) of the EIP currently on the
    EC2 instance, and the public subnet in the same AZ.
 
-**1. Edit `k8s/ingress-nginx-values.yaml`** — replace `eipalloc-REPLACE_ME`
+**1. Edit `k8s/traefik-values.yaml`** — replace `eipalloc-REPLACE_ME`
 and `subnet-REPLACE_ME` with real values.
 
-**2. Install ingress-nginx with those values**
+**2. Install Traefik with those values**
 
 ```bash
-helm upgrade --install ingress-nginx ingress-nginx \
-  --repo https://kubernetes.github.io/ingress-nginx \
-  --namespace ingress-nginx --create-namespace \
-  -f k8s/ingress-nginx-values.yaml
+helm upgrade --install traefik traefik \
+  --repo https://traefik.github.io/charts \
+  --namespace traefik --create-namespace \
+  -f k8s/traefik-values.yaml
 ```
 
 **3. Apply the app Ingress**
@@ -296,7 +296,7 @@ aws ec2 disassociate-address --association-id eipassoc-xxxx
 ```
 
 The AWS LB Controller reconciles the NLB and attaches the freed EIP. Client
-sees no address change; connections after the swap land on the NGINX
+sees no address change; connections after the swap land on the Traefik
 controller pods and are routed to the `helloworld` Service.
 
 **Rollback** — reverse in one step:
@@ -327,7 +327,7 @@ pinned, single-AZ is the ceiling until the client contract can change.
 | Health check              | ALB target group → HTTP `/healthz`| readiness/liveness probes → `/healthz`       |
 | Rollout                   | ASG instance refresh / AMI bake   | `kubectl rollout` (RollingUpdate strategy)   |
 | Horizontal scale          | ASG desired-count                 | Deployment `replicas` + HPA                  |
-| External LB               | ALB in front of ASG               | Ingress (NGINX or ALB controller) → NLB/ALB  |
+| External LB               | ALB in front of ASG               | Ingress (Traefik or ALB controller) → NLB/ALB|
 | Rollback                  | Previous AMI / launch template    | `kubectl rollout undo`                       |
 
 ## What we deliberately did not change
