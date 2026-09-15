@@ -26,13 +26,18 @@ k8s/                       # Future-state wrapper (EKS).
   service.yaml             # cluster-internal endpoint
   ingress.yaml             # optional NGINX ingress exposure
   ingress-nginx-values.yaml # Helm values: attach the EIP to the ingress NLB
-palette-pack/              # Spectro Cloud Palette add-on pack.
-  helloworld/0.1.0/        # ConfigMap+Deployment+Service+Ingress, templated
-palette-helm/              # Same app packaged as a standard Helm chart.
+palette-helm/              # WORKING: same app packaged as a Helm chart.
   helloworld/              # Chart.yaml, values.yaml, templates/
+                           #   Published to gh-pages branch as an index.yaml +
+                           #   .tgz, served by GitHub Pages, consumed by Palette
+                           #   as a Helm registry.
+palette-pack/              # DID NOT WORK: Palette add-on pack (Pack OCI type).
+  helloworld/0.1.0/        # Kept for reference — packsync's OCI-first-time-sync
+                           #   requires a Spectro-native manifest artifact that
+                           #   plain oras+Harbor can't produce.
 docs/
-  palette-pack.md          # build/publish/attach the pack to a Palette EKS cluster
-  palette-helm.md          # helm-chart alternative when Pack OCI sync isn't cooperating
+  palette-helm.md          # WORKING path: gh-pages + Palette Helm registry
+  palette-pack.md          # Reference for the Pack OCI attempt (did not work)
 ```
 
 ## Why the app is portable without changes
@@ -232,13 +237,16 @@ External exposure options on EKS:
 
 ### Deploying via Spectro Cloud Palette
 
-The same four manifests are packaged as a Palette add-on pack at
-`palette-pack/helloworld/0.1.0/` — image / replicas / config / ingress class
-are exposed as pack values, so per-cluster customization happens on the
-Cluster Profile layer instead of by editing YAML. Full build/publish/attach
-walkthrough (git-based and OCI-based registry paths, add-on profile
-attachment to an existing Palette-managed EKS cluster) is in
-[`docs/palette-pack.md`](docs/palette-pack.md).
+The same app ships as a Helm chart at `palette-helm/helloworld/` — image,
+replicas, config, and ingress class are exposed as chart values so per-cluster
+customization happens on the Cluster Profile layer instead of by editing YAML.
+Chart artifacts (`helloworld-*.tgz` + `index.yaml`) live on the
+[`gh-pages`](https://github.com/bdecoste/systemd-helloworld/tree/gh-pages)
+branch of this repo, served publicly by GitHub Pages at
+<https://bdecoste.github.io/systemd-helloworld>, and consumed by Palette as
+a Helm registry. Full package/publish/attach walkthrough (plus notes on the
+Pack OCI path that didn't work and why) is in
+[`docs/palette-helm.md`](docs/palette-helm.md).
 
 ### Reusing the existing Elastic IP in front of ingress-nginx
 
