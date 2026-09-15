@@ -1,0 +1,23 @@
+apiVersion: v1
+entries:
+  helloworld:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-09-14T17:25:58.46018-07:00"
+    description: HelloWorld migration demo — same app running as an EC2 systemd service
+      (current state) and as a K8s Deployment (future state).
+    digest: c7796715f0c069a3b92d2b02943b62e2ea0123b7d17ed66c028d7ff5751b2787
+    keywords:
+    - helloworld
+    - demo
+    - migration
+    kubeVersion: '>=1.23.0-0'
+    maintainers:
+    - email: bill.decoste@spectrocloud.com
+      name: Bill DeCoste
+    name: helloworld
+    type: application
+    urls:
+    - https://bdecoste.github.io/systemd-helloworld/helloworld-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-09-14T17:25:58.45969-07:00"
